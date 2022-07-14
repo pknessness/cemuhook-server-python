@@ -26,6 +26,22 @@ class CEMUMessage:
         self.CRC32 = bytes_to_int_rev(self.bytes[8:12]) & 0xffffffff
         self.senderID = bytes_to_int_rev(self.bytes[12:16]) & 0xffffffff
         self.eventType = bytes_to_int_rev(self.bytes[16:20]) & 0xffffffff
+        self.type = 0 # 0 is Blank, 1 is protocol info, 2 is info about connected controllers, 3 is actual controller data
+        if(self.eventType == 1048576):
+            self.type = 1
+        elif(self.eventType == 1048577):
+            self.type = 2
+        elif(self.eventType == 1048578):
+            self.type = 3
+        self.data = self.bytes[20:28]
+    
+    @staticmethod
+    def construct(id, eventType, data):
+        message = b''
+        message += b'DSUS'
+        message += b'\xe9' + b'\x03'
+        #message += 
+
 
     def print(self):
         print("---------")
@@ -35,6 +51,8 @@ class CEMUMessage:
         print("CRC32: %s" % self.CRC32)
         print("Sender ID: %s" % self.senderID)
         print("Event Type: %x" % self.eventType)
+        print("Data:",end="")
+        print(self.data)
         print("---------")
 
 UDP_IP = "127.0.0.1"
