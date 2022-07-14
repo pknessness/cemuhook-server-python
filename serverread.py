@@ -4,6 +4,7 @@
 import socket
 import keyboard
 import binascii
+import numpy as np
 
 def bytes_to_int(n):
     o = 0
@@ -50,17 +51,6 @@ class CEMUMessage:
         elif(self.eventType == 1048578):
             self.type = 3
         self.data = self.bytes[20:32]
-    
-    @staticmethod
-    def construct(id, eventType, data):
-        message = b''
-        message += b'DSUS'
-        message += b'\xe9' + b'\x03'
-        message += len(data) #THIS MIGHT NOT WORK????
-        message += b'\x00\x00\x00\x00' #CRC32 PLACEHOLDER
-        message += id
-        message += eventType
-        return message
 
 
     def print(self):
@@ -76,6 +66,25 @@ class CEMUMessage:
         print(self.data)
         print("---------")
 
+    @staticmethod
+    def construct(id, eventType, data):
+        message = b''
+        message += b'DSUS'
+        message += b'\xe9' + b'\x03'
+        lenBytes = bytearray(int_to_byte_array(len(data) + 4,16))
+        print(lenBytes)
+        for i in reversed(lenBytes):
+            message += bytes(i) #THIS MIGHT NOT WORK????
+        #message += b'\x00\x00\x00\x00' #CRC32 PLACEHOLDER
+        #message += reversed(int_to_byte_array(id), 32)
+        #message += reversed(int_to_byte_array(eventType), 32)
+        #message += data
+        print(message)
+        #returnMsg = CEMUMessage(message)
+        #print(returnMsg)
+        exit()
+        return 
+
 UDP_IP = "127.0.0.1"
 UDP_PORT = 26761
 
@@ -86,8 +95,11 @@ sock.bind((UDP_IP, UDP_PORT))
 while True:
     data, addr = sock.recvfrom(128) # buffer size is 1024 bytes
     #bytes = [data[i:i + 1] for i in range(0, len(data), 1)]
-    msg = CEMUMessage(data)
-    msg.print()
+    rxMsg = CEMUMessage(data)
+    #rxMsg.print()
+
+    txMsg = CEMUMessage.construct(28592813,0x100001,b'\x00\x01\x02\x02\x00\x00\x00\x00\x00\x00\x04\x00')
+    txMsg.print()
 
     try:  # used try so that if user pressed other than the given key error will not be shown
         if keyboard.is_pressed('home'):  # if key 'q' is pressed
