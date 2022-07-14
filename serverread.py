@@ -3,6 +3,7 @@
 
 import socket
 import keyboard
+import binascii
 
 def bytes_to_int(n):
     o = 0
@@ -22,6 +23,18 @@ def int_to_byte_array(n, num):
 
 class CEMUMessage:
     def __init__(self, data):
+        CRCTestPacket = [data[i:i + 1] for i in range(0, len(data), 1)]
+        print(CRCTestPacket)
+        CRCTestPacket[8] = b'\x00'
+        CRCTestPacket[9] = b'\x00'
+        CRCTestPacket[10] = b'\x00'
+        CRCTestPacket[11] = b'\x00'
+        print(CRCTestPacket)
+        CRCTestPacketCombined = b''
+        for i in CRCTestPacket:
+            CRCTestPacketCombined += i
+        self.intendedCRC32 = binascii.crc32(CRCTestPacketCombined)
+
         self.bytes = data#[data[i:i + 1] for i in range(0, len(data), 1)]
         self.owner =self.bytes[0:4].decode('UTF-8')
         self.protocol = bytes_to_int_rev(self.bytes[4:6]) & 0xffff
@@ -36,7 +49,7 @@ class CEMUMessage:
             self.type = 2
         elif(self.eventType == 1048578):
             self.type = 3
-        self.data = self.bytes[20:28]
+        self.data = self.bytes[20:32]
     
     @staticmethod
     def construct(id, eventType, data):
@@ -47,6 +60,7 @@ class CEMUMessage:
         message += b'\x00\x00\x00\x00' #CRC32 PLACEHOLDER
         message += id
         message += eventType
+        return message
 
 
     def print(self):
@@ -54,7 +68,8 @@ class CEMUMessage:
         print("Owner: %s" % self.owner)
         print("Protocol: %s" % self.protocol)
         print("Length: %s" % self.length)
-        print("CRC32: %s" % self.CRC32)
+        print("Intended CRC32: %s" % self.intendedCRC32)
+        print("Recieved CRC32: %s" % self.CRC32)
         print("Sender ID: %s" % self.senderID)
         print("Event Type: 0x%x" % self.eventType)
         print("Data: ",end="")
