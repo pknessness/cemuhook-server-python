@@ -16,6 +16,9 @@ def bytes_to_int_rev(n):
         o = (o << 8) + int(i)
     return o
 
+def int_to_byte_array(n, num):
+    return [int(digit) for digit in np.binary_repr(n,width=num)]
+
 
 class CEMUMessage:
     def __init__(self, data):
@@ -40,7 +43,10 @@ class CEMUMessage:
         message = b''
         message += b'DSUS'
         message += b'\xe9' + b'\x03'
-        #message += 
+        message += len(data) #THIS MIGHT NOT WORK????
+        message += b'\x00\x00\x00\x00' #CRC32 PLACEHOLDER
+        message += id
+        message += eventType
 
 
     def print(self):
@@ -50,8 +56,8 @@ class CEMUMessage:
         print("Length: %s" % self.length)
         print("CRC32: %s" % self.CRC32)
         print("Sender ID: %s" % self.senderID)
-        print("Event Type: %x" % self.eventType)
-        print("Data:",end="")
+        print("Event Type: 0x%x" % self.eventType)
+        print("Data: ",end="")
         print(self.data)
         print("---------")
 
