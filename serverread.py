@@ -21,6 +21,18 @@ def bytes_to_int_rev(n):
 def int_to_byte_array(n, num):
     return [int(digit) for digit in np.binary_repr(n,width=num)]
 
+def split_int_32(n):
+    return [n >> 24 & 0xff, n >> 16 & 0xff, n >> 8 & 0xff, n & 0xff]
+
+def split_int_16(n):
+    return [n >> 8 & 0xff, n & 0xff]
+
+def split_int_32_rev(n):
+    return [n & 0xff, n >> 8 & 0xff, n >> 16 & 0xff, n >> 24 & 0xff]
+
+def split_int_16_rev(n):
+    return [n & 0xff, n >> 8 & 0xff]
+
 
 class CEMUMessage:
     def __init__(self, data):
@@ -68,22 +80,19 @@ class CEMUMessage:
 
     @staticmethod
     def construct(id, eventType, data):
-        message = b''
+        message = bytearray()
         message += b'DSUS'
         message += b'\xe9' + b'\x03'
-        lenBytes = bytearray(int_to_byte_array(len(data) + 4,16))
-        print(lenBytes)
-        for i in reversed(lenBytes):
-            message += bytes(i) #THIS MIGHT NOT WORK????
-        #message += b'\x00\x00\x00\x00' #CRC32 PLACEHOLDER
-        #message += reversed(int_to_byte_array(id), 32)
-        #message += reversed(int_to_byte_array(eventType), 32)
-        #message += data
-        print(message)
-        #returnMsg = CEMUMessage(message)
+        message += bytearray(split_int_16_rev(len(data) + 4))
+        message += b'\x00\x00\x00\x00' #CRC32 PLACEHOLDER
+        message += bytearray(split_int_32_rev(id))
+        message += bytearray(split_int_32_rev(eventType))
+        message += data
+        crc = split_int_32_rev(binascii.crc32(message))
+        for i in range(4):
+            message[8 + i] = crc[0 + i]
         #print(returnMsg)
-        exit()
-        return 
+        return CEMUMessage(message)
 
 UDP_IP = "127.0.0.1"
 UDP_PORT = 26761
