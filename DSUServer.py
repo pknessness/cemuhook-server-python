@@ -2,6 +2,7 @@
 #https://v1993.github.io/cemuhook-protocol/
 
 import socket
+from tkinter import EventType
 import keyboard
 import binascii
 import numpy as np
@@ -27,6 +28,9 @@ def split_int_32(n):
 def split_int_16(n):
     return [n >> 8 & 0xff, n & 0xff]
 
+def split_int_48_rev(n):
+    return [n & 0xff, n >> 8 & 0xff, n >> 16 & 0xff, n >> 24 & 0xff, n >> 32 & 0xff, n >> 40 & 0xff]
+
 def split_int_32_rev(n):
     return [n & 0xff, n >> 8 & 0xff, n >> 16 & 0xff, n >> 24 & 0xff]
 
@@ -37,12 +41,12 @@ def split_int_16_rev(n):
 class CEMUMessage:
     def __init__(self, data):
         CRCTestPacket = [data[i:i + 1] for i in range(0, len(data), 1)]
-        print(CRCTestPacket)
+        #print(CRCTestPacket)
         CRCTestPacket[8] = b'\x00'
         CRCTestPacket[9] = b'\x00'
         CRCTestPacket[10] = b'\x00'
         CRCTestPacket[11] = b'\x00'
-        print(CRCTestPacket)
+        #print(CRCTestPacket)
         CRCTestPacketCombined = b''
         for i in CRCTestPacket:
             CRCTestPacketCombined += i
@@ -64,6 +68,11 @@ class CEMUMessage:
             self.type = 3
         self.data = self.bytes[20:32]
 
+        # self.controllerID, self.controllerType,
+        # if(self.eventType == 2 || self.eventType = 3):
+            
+
+
 
     def print(self):
         print("---------")
@@ -75,7 +84,27 @@ class CEMUMessage:
         print("Sender ID: %s" % self.senderID)
         print("Event Type: 0x%x" % self.eventType)
         print("Data: ",end="")
-        print(self.data)
+        if(self.type == 2):
+            if(self.owner == "DSUS"):
+                print()
+                print("- ID: #%i" % (int.from_bytes(self.data[0:1], "big") + 1), )
+                print("- Connected?: %i" % int.from_bytes(self.data[1:2], "big"))
+                print("- Model: %i" % int.from_bytes(self.data[2:3], "big"))
+                print("- Connection: %i" % int.from_bytes(self.data[3:4], "big"))
+                print("- MAC: 0x%x" % int.from_bytes(self.data[4:10], "big"))
+                print("- Battery: 0x%x" % int.from_bytes(self.data[10:11], "big"))
+            elif(self.owner == "DSUC"):
+                print()
+                num = int.from_bytes(self.data[0:4], "big")
+                print("- # of Controller: %i" % num)
+                print("- Controllers: ", end="")
+                for i in self.data[4:4+num]:
+                    print(i, end="")
+                    print(", ", end="")
+                print()
+
+        else:
+            print(self.data)
         print("---------")
 
     @staticmethod
@@ -94,6 +123,13 @@ class CEMUMessage:
         #print(returnMsg)
         return CEMUMessage(message)
 
+    def constructResponse(id, eventType, controllerID, connectStatus, controllerType, connectType, MAC, battery, data = b'\0'):
+        packet = bytearray([controllerID, connectStatus, controllerType, connectType])
+        packet += bytearray(split_int_48_rev(MAC))
+        packet += bytearray([battery])
+        packet += data
+        return CEMUMessage.construct(id, eventType, packet)
+
 UDP_IP = "127.0.0.1"
 UDP_PORT = 26761
 
@@ -105,10 +141,12 @@ while True:
     data, addr = sock.recvfrom(128) # buffer size is 1024 bytes
     #bytes = [data[i:i + 1] for i in range(0, len(data), 1)]
     rxMsg = CEMUMessage(data)
-    #rxMsg.print()
+    rxMsg.print()
 
     txMsg = CEMUMessage.construct(28592813,0x100001,b'\x00\x01\x02\x02\x00\x00\x00\x00\x00\x00\x04\x00')
     txMsg.print()
+    atxMsg = CEMUMessage.constructResponse(28592813,0x100001,0,1,2,2,0,3)
+    atxMsg.print()
 
     try:  # used try so that if user pressed other than the given key error will not be shown
         if keyboard.is_pressed('home'):  # if key 'q' is pressed
