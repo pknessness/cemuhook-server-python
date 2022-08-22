@@ -123,11 +123,34 @@ class CEMUMessage:
         #print(returnMsg)
         return CEMUMessage(message)
 
-    def constructResponse(id, eventType, controllerID, connectStatus, controllerType, connectType, MAC, battery, data = b'\0'):
+    def constructResponse(id, eventType, controllerID, connectStatus, controllerType, connectType, MACaddr, battery, data = b'\0'):
         packet = bytearray([controllerID, connectStatus, controllerType, connectType])
-        packet += bytearray(split_int_48_rev(MAC))
+        packet += bytearray(split_int_48_rev(MACaddr))
         packet += bytearray([battery])
         packet += data
+        return CEMUMessage.construct(id, eventType, packet)
+    
+    def constructRemoteData(id, eventType, controllerID, connectStatus, controllerType, connectType, MACaddr, battery, isConnected, packetNumber, dpadL, dpadD, dpadR, dpadU, start, r3, l3, select, y, b, a, x, r1, l1, r2, l2, homeB, touchB, lX, lY, rX, rY, accelX, accelY, accelZ, gyroPitch, gyroYaw, gyroRoll):
+        packet = bytearray([controllerID, connectStatus, controllerType, connectType])
+        packet += bytearray(split_int_48_rev(MACaddr))
+        packet += bytearray([battery, isConnected])
+        packet += bytearray(split_int_32_rev(packetNumber))
+
+        packet += bytearray([bytes_to_int([dpadL, dpadD, dpadR, dpadU, start, r3, l3, select])])
+        packet += bytearray([bytes_to_int([y, b, a, x, r1, l1, r2, l2])])
+        packet += bytearray([homeB, touchB, lX, lY, rX, rY])
+
+        packet += bytearray([dpadL, dpadD, dpadR, dpadU, y, b, a, x, r1, l1, r2, l2])
+        packet += bytearray(split_int_48_rev(0))
+        packet += bytearray(split_int_48_rev(0))
+        packet += bytearray(split_int_32_rev(0)); packet += bytearray(split_int_32_rev(0))
+
+        packet += bytearray(split_int_32_rev(accelX))
+        packet += bytearray(split_int_32_rev(accelY))
+        packet += bytearray(split_int_32_rev(accelZ))
+        packet += bytearray(split_int_32_rev(gyroPitch))
+        packet += bytearray(split_int_32_rev(gyroYaw))
+        packet += bytearray(split_int_32_rev(gyroRoll))
         return CEMUMessage.construct(id, eventType, packet)
 
 UDP_IP = "127.0.0.1"
@@ -142,11 +165,18 @@ while True:
     #bytes = [data[i:i + 1] for i in range(0, len(data), 1)]
     rxMsg = CEMUMessage(data)
     rxMsg.print()
+    print(addr)
+    if(rxMsg.type == 2):
+        atxMsg = CEMUMessage.constructResponse(28592813,0x100001,0,1,2,2,0,3)
+        sock.sendto(atxMsg.bytes, addr)
+    elif(rxMsg.type == 3):
+        atxMsg = CEMUMessage.constructRemoteData(28592813,0x100001,0,1,2,2,0,3,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+        sock.sendto(atxMsg.bytes, addr)
 
-    txMsg = CEMUMessage.construct(28592813,0x100001,b'\x00\x01\x02\x02\x00\x00\x00\x00\x00\x00\x04\x00')
-    txMsg.print()
-    atxMsg = CEMUMessage.constructResponse(28592813,0x100001,0,1,2,2,0,3)
-    atxMsg.print()
+
+    # txMsg = CEMUMessage.construct(28592813,0x100001,b'\x00\x01\x02\x02\x00\x00\x00\x00\x00\x00\x04\x00')
+    # txMsg.print()
+    
 
     try:  # used try so that if user pressed other than the given key error will not be shown
         if keyboard.is_pressed('home'):  # if key 'q' is pressed
